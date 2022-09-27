@@ -1,0 +1,23 @@
+spring:
+  jpa:
+    database: mysql
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: jdbc:mysql://localhost:3306/eipp
+    username: svc1
+    password: svc1
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate:
+      SQL: debug
+      # uncomment to see values for binding variables
+      # type.descriptor.sql: trace
+    org.vino9.lib: debug
+
+camel:
+  springboot:
+    main-run-controller: true
