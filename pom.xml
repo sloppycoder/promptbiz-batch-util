@@ -1,74 +1,76 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.6.12</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>org.vino9.lib</groupId>
-	<artifactId>promptbiz-batch-utils</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>PromptBiz Batch Transfer Utilities</name>
-	<description>calculateFileHash</description>
-	<properties>
-		<java.version>11</java.version>
-<camel.version>3.18.1</camel.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <groupId>org.springframework.boot</groupId>
+        <relativePath/>
+        <version>2.6.12</version> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>org.vino9.lib</groupId>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>promptbiz-batch-utils</artifactId>
+    <name>promptbiz-batch-utils</name>
+    <description>PromptBiz Batch Transfer Utilities</description>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <properties>
+        <java.version>11</java.version>
+        <camel.version>3.18.1</camel.version>
+    </properties>
+
+    <dependencies>
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <scope>runtime</scope>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <groupId>org.springframework.boot</groupId>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
+            <artifactId>jimfs</artifactId>
+            <groupId>com.google.jimfs</groupId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
             <artifactId>lombok</artifactId>
+            <groupId>org.projectlombok</groupId>
             <optional>true</optional>
         </dependency>
 
         <dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
-            <groupId>org.apache.camel</groupId>
             <artifactId>camel-jpa</artifactId>
-            <version>${camel.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-test-spring-junit5</artifactId>
             <version>${camel.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.jimfs</groupId>
-            <artifactId>jimfs</artifactId>
-            <version>1.2</version>
+            <artifactId>camel-test-spring-junit5</artifactId>
+            <groupId>org.apache.camel</groupId>
+            <version>${camel.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+            <groupId>org.flywaydb</groupId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <artifactId>mysql-connector-java</artifactId>
+            <groupId>mysql</groupId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <groupId>org.springframework.boot</groupId>
+            </plugin>
+        </plugins>
+    </build>
 </project>
