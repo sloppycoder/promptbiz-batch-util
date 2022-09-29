@@ -7,18 +7,18 @@ import java.io.OutputStream;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 /*
  <name>.zip
-   +--  content (file name differs based on PackageType)
+   +--  content (Presentment.xml/Invoice.xml/etc)
    |
-   +--  Attachments.zip
+   +--  attachments.zip (Attached_Presentments.zip/Attached_Invoices.zip)
          +- file_1
          |
          +- ...
@@ -33,20 +33,18 @@ public class DocumentWithAttachments {
     private final String name;
 
     @ToString.Include
-    private final int numOfAttachments = 0;
+    private int numOfAttachments = 0;
 
     @ToString.Include
     private final Direction direction;
 
     @ToString.Include
+    @Getter
     private final Path path; // Path object of this file
-
-    private Path attachmentsPath;
+    private Path attachmentsPath; //
 
     // the file system for file read/write
     private final FileSystem fs;
-
-    // stream objects
 
     // main file output
     private OutputStream fout;
@@ -56,8 +54,8 @@ public class DocumentWithAttachments {
     private OutputStream fattout; // attachment zip file
     private ZipOutputStream zattout; // attachment zipstream
 
-    @ToString.Include
-    private String workDir;
+    @Getter
+    private Path workPath;
 
     // ctor
     private DocumentWithAttachments(String name, Direction direction, Path path, FileSystem fs) {
@@ -66,6 +64,8 @@ public class DocumentWithAttachments {
         this.path = path;
         this.fs = fs;
     }
+
+    // public APIs
 
     public static DocumentWithAttachments create(String name, FileSystem fs) {
         if (name == null || name.isEmpty() || fs == null) {
@@ -84,7 +84,8 @@ public class DocumentWithAttachments {
 
         var name = filePath.split("\\.")[0];
         var doc = new DocumentWithAttachments(name, Direction.INPUT, fs.getPath(filePath), fs);
-        doc.ensureWorkDir();
+
+        doc.ensureWorkPath();
 
         // extract input zip to workdir
 
@@ -93,107 +94,126 @@ public class DocumentWithAttachments {
 
     // add a document to the main zip file
     public void addDocument(String name, Path docPath) throws IOException {
-        if (this.direction != Direction.OUTPUT) {
+        if (direction != Direction.OUTPUT) {
             log.debug("attempt to add document to INPUT file {}", this);
             return;
         }
 
         ensureOutput();
-        ensureWorkDir();
+        ensureWorkPath();
 
         zout.putNextEntry(new ZipEntry(name));
-        Files.copy(docPath, this.zout);
+        Files.copy(docPath, zout);
     }
 
     // add an attachment to an interim zip file
     // call finalizeAttachment to add the interim zip file to the main zip file
     public void stageAttachment(String attachmentName, Path attachmentPath) throws IOException {
-        if (this.direction != Direction.OUTPUT) {
+        if (direction != Direction.OUTPUT) {
             log.debug("attempt to stage attachment to INPUT file {}", this);
-            return;
+            throw new IOException("can only add attachment to an OUTPUT file");
         }
 
         ensureOutput();
-        ensureWorkDir();
+        ensureWorkPath();
 
-        if (this.numOfAttachments == 0) {
-            var randFile = UUID.randomUUID().toString();
-            this.attachmentsPath = fs.getPath(this.workDir + "/" + randFile);
-            this.fattout = Files.newOutputStream(this.attachmentsPath, CREATE_NEW);
-            this.zattout = new ZipOutputStream(this.fattout);
+        if (numOfAttachments == 0) {
+            attachmentsPath = workPath.resolve(FsUtils.randFileName());
+            fattout = Files.newOutputStream(attachmentsPath, CREATE_NEW);
+            zattout = new ZipOutputStream(fattout);
         }
 
-        this.zattout.putNextEntry(new ZipEntry(attachmentName));
-        Files.copy(attachmentPath, this.zattout);
+        zattout.putNextEntry(new ZipEntry(attachmentName));
+        Files.copy(attachmentPath, zattout);
+        numOfAttachments += 1;
     }
 
     public void finalizeAttachments(String name) throws IOException {
-        if (this.direction != Direction.OUTPUT) {
+        if (direction != Direction.OUTPUT) {
             log.debug("attempt to finalize attachment to INPUT file {}", this);
+            throw new IOException("cannot write to an INPUT file");
+        }
+
+        if (numOfAttachments == 0) {
             return;
         }
 
-        if (this.numOfAttachments == 0) {
-            return;
+        zattout.close();
+        fattout.close();
+
+        zout.putNextEntry(new ZipEntry(name));
+        Files.copy(attachmentsPath, zout);
+        Files.deleteIfExists(attachmentsPath);
+        attachmentsPath = null;
+    }
+
+    @SneakyThrows
+    public void close() {
+        if (direction == Direction.OUTPUT) {
+            if (zout != null) {
+                zout.close();
+                zout = null;
+            }
+            if (fout != null) {
+                fout.close();
+                fout = null;
+            }
+        }
+    }
+
+    @SneakyThrows
+    public void destroy(boolean deleteSelf) {
+        if (direction == Direction.OUTPUT) {
+            close();
+
+            if (zattout != null) {
+                zattout.close();
+                zattout = null;
+            }
+            if (fattout != null) {
+                fattout.close();
+                fattout = null;
+            }
         }
 
-        this.zattout.close();
-        this.fattout.close();
+        if (attachmentsPath != null) {
+            Files.deleteIfExists(attachmentsPath);
+            attachmentsPath = null;
+        }
 
-        Files.copy(this.attachmentsPath, this.zout);
-        Files.deleteIfExists(this.attachmentsPath);
+        if (workPath != null) {
+            FsUtils.delete(workPath);
+            workPath = null;
+        }
+
+        if (deleteSelf) {
+            Files.deleteIfExists(path);
+        }
     }
 
     // private methods
 
-    @SneakyThrows
-    public void destroy(boolean deleteSelf) {
-        if (this.direction == Direction.OUTPUT) {
-            if (zout != null) {
-                zout.close();
-            }
-            if (fout != null) {
-                fout.close();
-            }
-            if (zattout != null) {
-                zattout.close();
-            }
-            if (fattout != null) {
-                fattout.close();
-            }
-        }
-
-        if (this.workDir != null) {
-            FsUtil.deleteDirectory(this.fs, this.workDir);
-        }
-
-        if (deleteSelf) {
-            Files.deleteIfExists(this.path);
-        }
-    }
-
     // ensure workdir is created and clear
-    private void ensureWorkDir() throws IOException {
-        if (this.workDir != null && !this.workDir.isEmpty()) {
+    private void ensureWorkPath() throws IOException {
+        if (workPath != null) {
             return;
         }
-        var dir = UUID.randomUUID().toString();
-        FsUtil.deleteDirectory(fs, dir);
-        var path = fs.getPath(dir);
-        Files.createDirectory(path);
 
-        log.debug("DocumentWithAttachments[{}] workdir={}", this.name, dir);
+        var tmpPath = fs.getPath(FsUtils.randFileName());
+        FsUtils.delete(tmpPath);
+        Files.createDirectory(tmpPath);
 
-        this.workDir = dir;
+        log.debug("DocumentWithAttachments[{}] ensureWorkDir {}", name, tmpPath);
+        this.workPath = tmpPath;
     }
 
     // ensure output streams are open
     private boolean ensureOutput() throws IOException {
         if (zout == null) {
             if (fout == null) {
-                this.fout = Files.newOutputStream(this.path, CREATE_NEW);
+                fout = Files.newOutputStream(path, CREATE_NEW);
             }
-            this.zout = new ZipOutputStream(this.fout);
+            zout = new ZipOutputStream(fout);
         }
         return true;
     }
